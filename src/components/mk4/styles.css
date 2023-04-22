@@ -1,0 +1,82 @@
+.root {
+  position: relative;
+  height: 100svh;
+  max-height: 100svh;
+  overflow: hidden;
+  touch-action: none;
+
+  display: flex;
+  flex-direction: column;
+}
+
+.body {
+  background-color: #443730;
+  overflow: scroll;
+  display: flex;
+}
+
+.b {
+  height: 1400px;
+}
+
+.page-header {
+  height: 70px;
+  background-color: #2d3142;
+}
+
+.swipe {
+  width: 100%;
+  position: absolute;
+  top: 100%;
+  /*max-height: 700px;*/
+  overflow: hidden;
+  touch-action: none;
+}
+
+.swipe_scroll {
+  overflow: scroll;
+  touch-action: auto;
+}
+
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  max-height: 600px;
+}
+
+.header {
+  min-height: 70px;
+  height: 70px;
+  background-color: #a2c7e5;
+  border-radius: 12px 12px 0 0;
+}
+
+.content-wrapper {
+  height: 100%;
+  max-height: 600px;
+  overflow: scroll;
+}
+
+.content {
+  background-color: #344966;
+  padding: 16px;
+  height: 1500px;
+}
+
+.stub {
+  border-radius: 8px;
+  height: 200px;
+  background-color: #5b7553;
+  margin-bottom: 16px;
+}
+
+.non-scrollable {
+  height: 200px;
+  background-color: #8eb897;
+}
+
+.scrollable {
+  height: 100vh;
+  max-height: 500px;
+  background-color: #8ae1fc;
+}

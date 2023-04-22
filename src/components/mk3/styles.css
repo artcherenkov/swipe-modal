@@ -1,0 +1,77 @@
+.root {
+  position: relative;
+  height: 100svh;
+  max-height: 100svh;
+  overflow: hidden;
+  touch-action: none;
+
+  display: flex;
+  flex-direction: column;
+}
+
+.body {
+  background-color: #443730;
+  overflow: scroll;
+  display: flex;
+}
+
+.b {
+  height: 1400px;
+}
+
+.page-header {
+  height: 70px;
+  background-color: #2d3142;
+}
+
+.swipe {
+  width: 100%;
+  position: absolute;
+  top: 100%;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.swipe_scroll {
+  overflow: scroll;
+  touch-action: auto;
+}
+
+.wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  min-height: 70px;
+  height: 70px;
+  background-color: #a2c7e5;
+  border-radius: 12px 12px 0 0;
+}
+
+.content-wrapper {
+  height: 100%;
+}
+
+.content {
+  height: 1500px;
+  background-color: #344966;
+}
+
+#schet {
+  /*width: 100px;*/
+  /*height: 30px;*/
+  display: block;
+  position: fixed;
+  bottom: 10px;
+  z-index: 10;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 1px solid black;
+}
+
+body,
+html {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
