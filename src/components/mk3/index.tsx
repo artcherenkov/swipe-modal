@@ -1,14 +1,13 @@
 import "./styles.css";
 import { animated, useSpring } from "@react-spring/web";
-import { useDrag, useScroll } from "@use-gesture/react";
+import { useDrag } from "@use-gesture/react";
 import {
   MutableRefObject,
   useCallback,
   useEffect,
   useRef,
-  useState
+  useState,
 } from "react";
-import cn from "classnames";
 
 enum EState {
   HIDDEN,
@@ -41,7 +40,6 @@ export const Mk3 = () => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const swipeRef = useRef<HTMLDivElement>(null);
 
-
   const maxHeight = useMaxModalHeight(anchorRef);
 
   const getHeightForState = useCallback(
@@ -67,9 +65,13 @@ export const Mk3 = () => {
     [maxHeight]
   );
 
-
   const bind = useDrag(
     ({ active, movement: [, my], offset: [, oy] }) => {
+      if (modalState.current === EState.FULL && my > 0) {
+        modalState.current = EState.HALF;
+        swipeRef.current?.classList.remove("swipe_scroll");
+      }
+
       if (my < -70) {
         if (oy > getHeightForState(EState.HALF)) {
           modalState.current = EState.HALF;
@@ -99,13 +101,13 @@ export const Mk3 = () => {
 
       api.start({
         y: active ? oy : getHeightForState(modalState.current),
-        immediate: false
+        immediate: false,
       });
     },
     {
       filterTaps: true,
       from: () => [0, y.get()],
-      rubberband: true
+      rubberband: true,
     }
   );
 
@@ -113,19 +115,6 @@ export const Mk3 = () => {
     const headerHeight = headerRef.current?.offsetHeight || 0;
     api.start({ y: -headerHeight });
   }, []);
-
-  const bindScroll = useScroll(({ event, direction: [, dy] }) => {
-    if (!event.currentTarget || !swipeRef.current) {
-      return;
-    }
-
-    // @ts-ignore
-    if (event.currentTarget.scrollTop < -40 && dy < 1) {
-      modalState.current = EState.HALF;
-      swipeRef.current.classList.remove("swipe_scroll");
-      api.start({ y: getHeightForState(EState.HALF) });
-    }
-  }, {});
 
   return (
     <div className="root">
@@ -143,9 +132,8 @@ export const Mk3 = () => {
         <div className="b"></div>
       </div>
       <animated.div
-        className={cn("swipe", {})}
+        className={"swipe"}
         {...bind()}
-        {...bindScroll()}
         style={{ y, maxHeight }}
         ref={swipeRef}
       >
