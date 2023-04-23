@@ -1,17 +1,12 @@
 import "./styles.css";
 import { animated, useSpring } from "@react-spring/web";
-import { useDrag, useGesture, useScroll } from "@use-gesture/react";
-import {
-  disableBodyScroll,
-  enableBodyScroll,
-  clearAllBodyScrollLocks,
-} from "body-scroll-lock";
+import { useDrag, useScroll } from "@use-gesture/react";
 import {
   MutableRefObject,
   useCallback,
   useEffect,
   useRef,
-  useState,
+  useState
 } from "react";
 import cn from "classnames";
 
@@ -36,14 +31,6 @@ export const useMaxModalHeight = <T extends HTMLElement>(
   return maxHeight;
 };
 
-const debounce = (fn: Function, ms = 300) => {
-  let timeoutId: ReturnType<typeof setTimeout>;
-  return function (this: any, ...args: any[]) {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => fn.apply(this, args), ms);
-  };
-};
-
 export const Mk3 = () => {
   const [{ y }, api] = useSpring(() => ({ y: 0 }));
 
@@ -52,6 +39,8 @@ export const Mk3 = () => {
   const headerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const swipeRef = useRef<HTMLDivElement>(null);
+
 
   const maxHeight = useMaxModalHeight(anchorRef);
 
@@ -78,16 +67,13 @@ export const Mk3 = () => {
     [maxHeight]
   );
 
-  const swipeRef = useRef(null);
 
   const bind = useDrag(
-    ({ active, movement: [, my], offset: [, oy], cancel, last }) => {
-      if (modalState.current === EState.HIDDEN) {
-        cancel();
-      }
-
+    ({ active, movement: [, my], offset: [, oy] }) => {
       if (my < -70) {
-        if (modalState.current === EState.HALF) {
+        if (oy > getHeightForState(EState.HALF)) {
+          modalState.current = EState.HALF;
+        } else {
           modalState.current = EState.FULL;
         }
       } else if (my > 70) {
@@ -99,24 +85,27 @@ export const Mk3 = () => {
       }
 
       if (modalState.current > EState.HIDDEN) {
-        document.body.style = "overflow: hidden;overscroll-behavior: none;";
+        document.body.style.overflow = "hidden";
+        document.body.style.overscrollBehavior = "none";
       }
 
-      if (modalState.current === EState.FULL) {
-        swipeRef.current.classList.add("swipe_scroll");
-      } else {
-        swipeRef.current.classList.remove("swipe_scroll");
+      if (swipeRef.current) {
+        if (modalState.current === EState.FULL) {
+          swipeRef.current.classList.add("swipe_scroll");
+        } else {
+          swipeRef.current.classList.remove("swipe_scroll");
+        }
       }
 
       api.start({
         y: active ? oy : getHeightForState(modalState.current),
-        immediate: false,
+        immediate: false
       });
     },
     {
       filterTaps: true,
       from: () => [0, y.get()],
-      rubberband: true,
+      rubberband: true
     }
   );
 
@@ -125,23 +114,18 @@ export const Mk3 = () => {
     api.start({ y: -headerHeight });
   }, []);
 
-  const onClick = () => {
-    if (modalState.current === EState.HIDDEN) {
+  const bindScroll = useScroll(({ event, direction: [, dy] }) => {
+    if (!event.currentTarget || !swipeRef.current) {
+      return;
+    }
+
+    // @ts-ignore
+    if (event.currentTarget.scrollTop < -40 && dy < 1) {
       modalState.current = EState.HALF;
+      swipeRef.current.classList.remove("swipe_scroll");
       api.start({ y: getHeightForState(EState.HALF) });
     }
-  };
-
-  const [{ scrollY }, scrollApi] = useSpring(() => ({ scrollY: 0 }));
-  const bindScroll = useGesture({
-    onScroll: ({ event, direction: [, dy] }) => {
-      if (event.currentTarget?.scrollTop < -40 && dy < 1) {
-        modalState.current = EState.HALF;
-        swipeRef.current.classList.remove("swipe_scroll");
-        api.start({ y: getHeightForState(EState.HALF) });
-      }
-    },
-  });
+  }, {});
 
   return (
     <div className="root">
@@ -166,7 +150,7 @@ export const Mk3 = () => {
         ref={swipeRef}
       >
         <div className="wrapper" ref={contentRef}>
-          <div className="header" onClick={onClick} ref={headerRef}></div>
+          <div className="header" ref={headerRef}></div>
           <div className="content-wrapper" ref={wrapperRef}>
             <div className="content">
               <div className="stub"></div>
