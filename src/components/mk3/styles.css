@@ -28,6 +28,10 @@
   background-color: #1481ba;
   height: 400px;
   margin-bottom: 16px;
+  -moz-user-select:none; /* firefox */
+  -webkit-user-select: none; /* Safari */
+  -ms-user-select: none; /* IE*/
+  user-select: none; /* Standard syntax */
   border-radius: 8px;
 }
 
@@ -43,6 +47,7 @@
   top: 100%;
   overflow: hidden;
   touch-action: none;
+  user-select: none;
 }
 
 .swipe_scroll {
@@ -69,6 +74,7 @@
 .content {
   background-color: #344966;
   padding: 16px;
+  user-select: none;
 }
 
 #schet {
