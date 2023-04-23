@@ -10,17 +10,30 @@
 }
 
 .body {
-  background-color: #443730;
+  background-color: #001021;
   overflow: scroll;
   display: flex;
+  flex-direction: column;
+  padding: 16px;
 }
 
 .b {
-  height: 1400px;
+  background-color: #1e2d2f;
+  height: 300px;
+  margin-bottom: 16px;
+  min-height: 300px;
+}
+
+.stub {
+  background-color: #1481ba;
+  height: 400px;
+  margin-bottom: 16px;
+  border-radius: 8px;
 }
 
 .page-header {
   height: 70px;
+  min-height: 70px;
   background-color: #2d3142;
 }
 
@@ -54,8 +67,8 @@
 }
 
 .content {
-  height: 1500px;
   background-color: #344966;
+  padding: 16px;
 }
 
 #schet {
@@ -68,10 +81,4 @@
   left: 50%;
   transform: translateX(-50%);
   border: 1px solid black;
-}
-
-body,
-html {
-  overflow: hidden;
-  overscroll-behavior: none;
 }

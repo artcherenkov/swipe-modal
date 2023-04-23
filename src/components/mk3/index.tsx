@@ -78,37 +78,17 @@ export const Mk3 = () => {
     [maxHeight]
   );
 
-  const wrap = (nextValue, fn) => {
-    let prevValue: undefined | number = undefined;
-
-    const cb = () => {
-      if (nextValue === prevValue) {
-        return;
-      }
-
-      modalState.current = nextValue;
-      prevValue = nextValue;
-    };
-
-    cb();
-  };
-
   const swipeRef = useRef(null);
 
   const bind = useDrag(
     ({ active, movement: [, my], offset: [, oy], cancel, last }) => {
-      if (
-        modalState.current === EState.HIDDEN ||
-        (modalState.current === EState.FULL && my < 0)
-      ) {
+      if (modalState.current === EState.HIDDEN) {
         cancel();
       }
 
       if (my < -70) {
         if (modalState.current === EState.HALF) {
-          swipeRef.current.classList.add("swipe_scroll");
           modalState.current = EState.FULL;
-          cancel();
         }
       } else if (my > 70) {
         if (oy < getHeightForState(EState.HALF)) {
@@ -116,7 +96,16 @@ export const Mk3 = () => {
         } else {
           modalState.current = EState.HIDDEN;
         }
-        cancel();
+      }
+
+      if (modalState.current > EState.HIDDEN) {
+        document.body.style = "overflow: hidden;overscroll-behavior: none;";
+      }
+
+      if (modalState.current === EState.FULL) {
+        swipeRef.current.classList.add("swipe_scroll");
+      } else {
+        swipeRef.current.classList.remove("swipe_scroll");
       }
 
       api.start({
@@ -143,44 +132,30 @@ export const Mk3 = () => {
     }
   };
 
-  const call = () => {
-    console.log(modalState.current);
-  };
-
   const [{ scrollY }, scrollApi] = useSpring(() => ({ scrollY: 0 }));
   const bindScroll = useGesture({
-    onScroll: ({
-      event,
-      direction: [, dy],
-      velocity: [, vy],
-      ...sharedState
-    }) => {
-      console.log("scr", event.currentTarget?.scrollTop);
-      document.getElementById("schet")!.textContent =
-        event.currentTarget?.scrollTop +
-        " /\n" +
-        vy +
-        " /\n" +
-        swipeRef.current.classList.contains("swipe_scroll");
+    onScroll: ({ event, direction: [, dy] }) => {
       if (event.currentTarget?.scrollTop < -40 && dy < 1) {
+        modalState.current = EState.HALF;
         swipeRef.current.classList.remove("swipe_scroll");
         api.start({ y: getHeightForState(EState.HALF) });
       }
     },
   });
 
-  console.log(scrollY.get());
-
-  useEffect(() => {
-    if (!swipeRef.current) {
-      return;
-    }
-  }, []);
-
   return (
     <div className="root">
       <div className="page-header" ref={anchorRef}></div>
       <div className="body">
+        <div className="b"></div>
+        <div className="b"></div>
+        <div className="b"></div>
+        <div className="b"></div>
+        <div className="b"></div>
+        <div className="b"></div>
+        <div className="b"></div>
+        <div className="b"></div>
+        <div className="b"></div>
         <div className="b"></div>
       </div>
       <animated.div
@@ -193,11 +168,21 @@ export const Mk3 = () => {
         <div className="wrapper" ref={contentRef}>
           <div className="header" onClick={onClick} ref={headerRef}></div>
           <div className="content-wrapper" ref={wrapperRef}>
-            <div className="content"></div>
+            <div className="content">
+              <div className="stub"></div>
+              <div className="stub"></div>
+              <div className="stub"></div>
+              <div className="stub"></div>
+              <div className="stub"></div>
+              <div className="stub"></div>
+              <div className="stub"></div>
+              <div className="stub"></div>
+              <div className="stub"></div>
+              <div className="stub"></div>
+            </div>
           </div>
         </div>
       </animated.div>
-      <span id="schet"></span>
     </div>
   );
 };
