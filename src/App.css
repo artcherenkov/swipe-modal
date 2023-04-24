@@ -1,0 +1,71 @@
+#root {
+  position: relative;
+  height: 100svh;
+  max-height: 100svh;
+  overflow: hidden;
+  -ms-touch-action: none;
+  touch-action: none;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -ms-flex-direction: column;
+  flex-direction: column;
+}
+
+.body {
+  background-color: #001021;
+  overflow: scroll;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  padding: 16px;
+}
+
+.b {
+  background-color: #1e2d2f;
+  height: 300px;
+  margin-bottom: 16px;
+  min-height: 300px;
+}
+
+.stub {
+  background-color: #1481ba;
+  height: 400px;
+  margin-bottom: 16px;
+  -moz-user-select: none; /* firefox */
+  -webkit-user-select: none; /* Safari */
+  -ms-user-select: none; /* IE*/
+  user-select: none; /* Standard syntax */
+  border-radius: 8px;
+}
+
+.page-header {
+  background-color: #2d3142;
+  padding: 8px;
+}
+
+.buttons {
+  display: flex;
+  flex-direction: column;
+}
+
+.buttons button {
+  -webkit-appearance: none;
+  -webkit-border-radius: 0;
+  padding: 8px;
+  font-size: 14px;
+}
+
+.inline-buttons {
+  display: flex;
+}
+
+.inline-buttons button {
+  width: 100%;
+}

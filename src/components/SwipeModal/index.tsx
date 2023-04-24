@@ -1,55 +1,59 @@
 import "./styles.css";
-import { animated, useSpring } from "@react-spring/web";
+import { animated, ControllerUpdate, useSpring } from "@react-spring/web";
 import { Handler, useGesture } from "@use-gesture/react";
-import {
-  MutableRefObject,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 
-enum EState {
+export enum EState {
   HIDDEN,
   HALF,
   FULL,
 }
 
-export const useMaxModalHeight = <T extends HTMLElement>(
-  anchorRef: MutableRefObject<T | null>
-) => {
-  const [maxHeight, setMaxHeight] = useState(0);
+interface ISwipeModal {
+  maxHeight: number;
+  children: React.ReactElement | null;
+  state: EState;
 
-  useEffect(() => {
-    if (anchorRef.current) {
-      const { offsetTop, offsetHeight } = anchorRef.current;
-      setMaxHeight(window.innerHeight - offsetTop - offsetHeight);
-    }
-  }, [anchorRef.current?.offsetTop, anchorRef.current?.offsetHeight]);
+  onStateChange(state: EState): void;
+}
 
-  return maxHeight;
-};
+export const SwipeModal = (props: ISwipeModal) => {
+  const { maxHeight, children, state, onStateChange } = props;
 
-export const Mk3 = () => {
   const [{ y }, api] = useSpring(() => ({ y: 0 }));
 
-  const modalState = useRef<number>(0);
-  const anchorRef = useRef<HTMLDivElement>(null);
-  const headerRef = useRef<HTMLDivElement>(null);
+  const modalState = useRef<EState>(state);
   const contentRef = useRef<HTMLDivElement>(null);
-  const wrapperRef = useRef<HTMLDivElement>(null);
   const swipeRef = useRef<HTMLDivElement>(null);
 
-  const maxHeight = useMaxModalHeight(anchorRef);
+  /**
+   * Прокси-функция для изменения родительского стейта
+   * @param props
+   */
+  const apiStart = (props: ControllerUpdate<{ y: number }>) => {
+    onStateChange(modalState.current);
+    api.start(props);
+  };
+
+  useEffect(() => {
+    modalState.current = state;
+
+    apiStart({ y: getHeightForState(state) });
+  }, [state]);
 
   // для прокидывания текущего drag movementY в событие скролла
   let currentDragMy = 0;
   // для прокидывания текущего положения скролла в событие дрэга
   let currentScroll: undefined | number = undefined;
 
+  useEffect(() => {
+    if (modalState.current === EState.FULL) {
+      apiStart({ y: getHeightForState(modalState.current) });
+    }
+  }, [children]);
+
   const getHeightForState = useCallback(
     (state: EState) => {
-      const headerHeight = headerRef.current?.offsetHeight || 0;
       const contentHeight = contentRef.current?.offsetHeight || 0;
 
       const actualMaxHeight =
@@ -57,7 +61,7 @@ export const Mk3 = () => {
 
       switch (state) {
         case EState.HIDDEN: {
-          return -headerHeight;
+          return 0;
         }
         case EState.HALF: {
           return -maxHeight / 2;
@@ -67,7 +71,7 @@ export const Mk3 = () => {
         }
       }
     },
-    [maxHeight]
+    [maxHeight, children]
   );
 
   /**
@@ -83,7 +87,6 @@ export const Mk3 = () => {
       document.body.style.overscrollBehavior = "auto";
     }
   };
-
   /**
    * Функция для закрытия модалки при свайпе. Может вызываться в двух местах:
    * в обработчике дрэга и скролла. В случае вызова из обработчика скролла
@@ -100,7 +103,7 @@ export const Mk3 = () => {
       swipeRef.current?.classList.remove("swipe_scroll");
 
       if (invokeGestureApi) {
-        api.start({
+        apiStart({
           y: getHeightForState(modalState.current),
           immediate: false,
         });
@@ -152,14 +155,19 @@ export const Mk3 = () => {
     closeModalOnSwipe();
     handleAddingScrollClassname();
 
-    api.start({
+    apiStart({
       y: active ? oy : getHeightForState(modalState.current),
       immediate: false,
     });
   };
 
   const scrollFn: Handler<"scroll", UIEvent> = ({ event }) => {
-    const target = event.currentTarget as HTMLElement;
+    const target = event.currentTarget as HTMLElement | null;
+
+    if (!target) {
+      return;
+    }
+
     const scrollTop = target.scrollTop;
 
     // На андроиде скролл элемента становится undefined, если он остановился в любом месте.
@@ -195,50 +203,17 @@ export const Mk3 = () => {
     }
   );
 
-  useEffect(() => {
-    const headerHeight = headerRef.current?.offsetHeight || 0;
-    api.start({ y: -headerHeight });
-  }, []);
-
   return (
-    <div className="root">
-      <div className="page-header" ref={anchorRef}></div>
-      <div className="body">
-        <div className="b"></div>
-        <div className="b"></div>
-        <div className="b"></div>
-        <div className="b"></div>
-        <div className="b"></div>
-        <div className="b"></div>
-        <div className="b"></div>
-        <div className="b"></div>
-        <div className="b"></div>
-        <div className="b"></div>
+    <animated.div
+      className="swipe"
+      ref={swipeRef}
+      style={{ y, maxHeight }}
+      {...bind()}
+    >
+      <div className="wrapper" ref={contentRef}>
+        <div className="header"></div>
+        <div className="content">{children}</div>
       </div>
-      <animated.div
-        className="swipe"
-        ref={swipeRef}
-        style={{ y, maxHeight }}
-        {...bind()}
-      >
-        <div className="wrapper" ref={contentRef}>
-          <div className="header" ref={headerRef}></div>
-          <div className="content-wrapper" ref={wrapperRef}>
-            <div className="content">
-              <div className="stub"></div>
-              <div className="stub"></div>
-              <div className="stub"></div>
-              <div className="stub"></div>
-              <div className="stub"></div>
-              <div className="stub"></div>
-              <div className="stub"></div>
-              <div className="stub"></div>
-              <div className="stub"></div>
-              <div className="stub"></div>
-            </div>
-          </div>
-        </div>
-      </animated.div>
-    </div>
+    </animated.div>
   );
 };
