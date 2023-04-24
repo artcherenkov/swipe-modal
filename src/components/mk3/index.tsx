@@ -8,7 +8,6 @@ import {
   useRef,
   useState,
 } from "react";
-import cn from "classnames";
 
 enum EState {
   HIDDEN,
@@ -41,9 +40,12 @@ export const Mk3 = () => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const swipeRef = useRef<HTMLDivElement>(null);
 
-  const schetRef = useRef<HTMLSpanElement>(null);
-
   const maxHeight = useMaxModalHeight(anchorRef);
+
+  // для прокидывания текущего drag movementY в событие скролла
+  let currentDragMy = 0;
+  // для прокидывания текущего положения скролла в событие дрэга
+  let currentScroll: undefined | number = undefined;
 
   const getHeightForState = useCallback(
     (state: EState) => {
@@ -68,10 +70,11 @@ export const Mk3 = () => {
     [maxHeight]
   );
 
-  let dragMy = 0;
-  let elScroll: undefined | number = undefined;
-
-  const toggleBodyScroll = (isLocked: boolean) => {
+  /**
+   * Функция для блокировки pull-to-refresh в мобильных браузерах.
+   * @param isLocked нужно ли включить блокировку.
+   */
+  const toggleDocumentBodyScroll = (isLocked: boolean) => {
     if (isLocked) {
       document.body.style.overflow = "hidden";
       document.body.style.overscrollBehavior = "none";
@@ -81,13 +84,53 @@ export const Mk3 = () => {
     }
   };
 
+  /**
+   * Функция для закрытия модалки при свайпе. Может вызываться в двух местах:
+   * в обработчике дрэга и скролла. В случае вызова из обработчика скролла
+   * нужно принудительно вызывать gesture API, чтобы свернуть модалку.
+   * @param invokeGestureApi параметр для принудительного вызова gesture API
+   */
+  const closeModalOnSwipe = (invokeGestureApi = false) => {
+    const isFullMode = modalState.current === EState.FULL;
+    const isAtTheTop = currentScroll === undefined || currentScroll <= 0;
+    const isSwipeToBottom = currentDragMy > 0;
+
+    if (isFullMode && isSwipeToBottom && isAtTheTop) {
+      modalState.current = EState.HALF;
+      swipeRef.current?.classList.remove("swipe_scroll");
+
+      if (invokeGestureApi) {
+        api.start({
+          y: getHeightForState(modalState.current),
+          immediate: false,
+        });
+      }
+    }
+  };
+
+  /**
+   * Функция для добавления/удаления CSS-класса, отвечающего за возможность
+   * скролла модалки.
+   */
+  const handleAddingScrollClassname = () => {
+    if (!swipeRef.current) {
+      return;
+    }
+
+    if (modalState.current === EState.FULL) {
+      swipeRef.current.classList.add("swipe_scroll");
+    } else {
+      swipeRef.current.classList.remove("swipe_scroll");
+    }
+  };
+
   const dragFn: Handler<
     "drag",
     PointerEvent | MouseEvent | TouchEvent | KeyboardEvent
   > = ({ cancel, active, movement: [, my], offset: [, oy] }) => {
-    dragMy = my;
+    currentDragMy = my;
 
-    if (elScroll && elScroll > 10) {
+    if (currentScroll && currentScroll > 10) {
       cancel();
     }
 
@@ -105,30 +148,9 @@ export const Mk3 = () => {
       }
     }
 
-    toggleBodyScroll(modalState.current > EState.HIDDEN);
-
-    const scrollCondition = elScroll === undefined || elScroll < 5;
-    const isFullMode = modalState.current === EState.FULL;
-
-    const dragMyPrintValue = Math.trunc(dragMy);
-    const elScrollPrintValue =
-      elScroll === undefined ? "undefined" : Math.trunc(elScroll);
-
-    const isFullPrintValue = modalState.current;
-
-    schetRef.current.textContent = `my: ${dragMyPrintValue}\nscrollTop: ${elScrollPrintValue}\nisFull ${isFullPrintValue}`;
-    if (isFullMode && dragMy > 0 && scrollCondition) {
-      modalState.current = EState.HALF;
-      swipeRef.current?.classList.remove("swipe_scroll");
-    }
-
-    if (swipeRef.current) {
-      if (modalState.current === EState.FULL) {
-        swipeRef.current.classList.add("swipe_scroll");
-      } else {
-        swipeRef.current.classList.remove("swipe_scroll");
-      }
-    }
+    toggleDocumentBodyScroll(modalState.current > EState.HIDDEN);
+    closeModalOnSwipe();
+    handleAddingScrollClassname();
 
     api.start({
       y: active ? oy : getHeightForState(modalState.current),
@@ -140,24 +162,18 @@ export const Mk3 = () => {
     const target = event.currentTarget as HTMLElement;
     const scrollTop = target.scrollTop;
 
-    elScroll = scrollTop === undefined ? elScroll : scrollTop;
+    // На андроиде скролл элемента становится undefined, если он остановился в любом месте.
+    // В коде считается, что если скролл = undefined, то модалка не скроллилась вообще.
+    // Если сработал этот обработчик, значит скролл был, поэтому записываем в глобальную переменную
+    // последнее значение скролла
+    currentScroll = scrollTop === undefined ? currentScroll : scrollTop;
 
-    const isFullMode = modalState.current === EState.FULL;
-    const isAtTheTop = elScroll === undefined || elScroll === 0;
-    const isSwipeToBottom = dragMy > 0;
+    closeModalOnSwipe(true);
 
     // если скролл где-то внизу, считаем, что жест не активен
+    // нужно, чтобы не закрывать модалку, пока скролл не в верхнем положении
     if (scrollTop !== 0) {
-      dragMy = 0;
-    }
-
-    if (isFullMode && isSwipeToBottom && isAtTheTop) {
-      modalState.current = EState.HALF;
-      swipeRef.current?.classList.remove("swipe_scroll");
-      api.start({
-        y: getHeightForState(modalState.current),
-        immediate: false,
-      });
+      currentDragMy = 0;
     }
   };
 
@@ -178,6 +194,7 @@ export const Mk3 = () => {
       },
     }
   );
+
   useEffect(() => {
     const headerHeight = headerRef.current?.offsetHeight || 0;
     api.start({ y: -headerHeight });
@@ -199,10 +216,10 @@ export const Mk3 = () => {
         <div className="b"></div>
       </div>
       <animated.div
-        className={cn("swipe", {})}
-        {...bind()}
-        style={{ y, maxHeight }}
+        className="swipe"
         ref={swipeRef}
+        style={{ y, maxHeight }}
+        {...bind()}
       >
         <div className="wrapper" ref={contentRef}>
           <div className="header" ref={headerRef}></div>
@@ -222,7 +239,6 @@ export const Mk3 = () => {
           </div>
         </div>
       </animated.div>
-      <span id="schet" ref={schetRef}></span>
     </div>
   );
 };
