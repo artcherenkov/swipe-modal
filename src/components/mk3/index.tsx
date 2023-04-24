@@ -41,6 +41,8 @@ export const Mk3 = () => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const swipeRef = useRef<HTMLDivElement>(null);
 
+  const schetRef = useRef<HTMLSpanElement>(null);
+
   const maxHeight = useMaxModalHeight(anchorRef);
 
   const getHeightForState = useCallback(
@@ -105,6 +107,21 @@ export const Mk3 = () => {
 
     toggleBodyScroll(modalState.current > EState.HIDDEN);
 
+    const scrollCondition = elScroll === undefined || elScroll < 5;
+    const isFullMode = modalState.current === EState.FULL;
+
+    const dragMyPrintValue = Math.trunc(dragMy);
+    const elScrollPrintValue =
+      elScroll === undefined ? "undefined" : Math.trunc(elScroll);
+
+    const isFullPrintValue = modalState.current;
+
+    schetRef.current.textContent = `my: ${dragMyPrintValue}\nscrollTop: ${elScrollPrintValue}\nisFull ${isFullPrintValue}`;
+    if (isFullMode && dragMy > 0 && scrollCondition) {
+      modalState.current = EState.HALF;
+      swipeRef.current?.classList.remove("swipe_scroll");
+    }
+
     if (swipeRef.current) {
       if (modalState.current === EState.FULL) {
         swipeRef.current.classList.add("swipe_scroll");
@@ -120,20 +137,28 @@ export const Mk3 = () => {
   };
 
   const scrollFn: Handler<"scroll", UIEvent> = ({ event }) => {
-    // @ts-ignore
-    const scrollTop = event.currentTarget?.scrollTop;
-    const isFullMode = modalState.current === EState.FULL;
-    elScroll = scrollTop;
+    const target = event.currentTarget as HTMLElement;
+    const scrollTop = target.scrollTop;
 
-    if (isFullMode && dragMy > 0 && scrollTop < 5) {
-      modalState.current = EState.HALF;
-      swipeRef.current?.classList.remove("swipe_scroll");
+    elScroll = scrollTop === undefined ? elScroll : scrollTop;
+
+    const isFullMode = modalState.current === EState.FULL;
+    const isAtTheTop = elScroll === undefined || elScroll === 0;
+    const isSwipeToBottom = dragMy > 0;
+
+    // если скролл где-то внизу, считаем, что жест не активен
+    if (scrollTop !== 0) {
+      dragMy = 0;
     }
 
-    api.start({
-      y: getHeightForState(modalState.current),
-      immediate: false,
-    });
+    if (isFullMode && isSwipeToBottom && isAtTheTop) {
+      modalState.current = EState.HALF;
+      swipeRef.current?.classList.remove("swipe_scroll");
+      api.start({
+        y: getHeightForState(modalState.current),
+        immediate: false,
+      });
+    }
   };
 
   const bind = useGesture(
@@ -197,6 +222,7 @@ export const Mk3 = () => {
           </div>
         </div>
       </animated.div>
+      <span id="schet" ref={schetRef}></span>
     </div>
   );
 };
