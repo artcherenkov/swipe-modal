@@ -5,8 +5,8 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { EState, SwipeModal } from "./components/SwipeModal";
 import "./App.css";
+import { ESwipeModalState, SwipeModalV2 } from "./components/SwipeModalV2";
 
 const range = (count: number) => {
   const res = [];
@@ -35,7 +35,7 @@ export const useMaxModalHeight = <T extends HTMLElement>(
 function App() {
   const anchorRef = useRef<HTMLElement | null>(null);
   const [blocksCount, setBlocksCount] = useState(1);
-  const [state, setState] = useState<EState>(0);
+  const [state, setState] = useState<ESwipeModalState>(ESwipeModalState.HIDDEN);
 
   useEffect(() => {
     anchorRef.current = document.getElementById("page-header");
@@ -48,7 +48,7 @@ function App() {
   }, [state]);
 
   const onStateChange = useCallback(
-    (newState: EState) => {
+    (newState: ESwipeModalState) => {
       if (newState === state) {
         return;
       }
@@ -57,15 +57,15 @@ function App() {
     [state]
   );
 
-  const getText = (state: EState) => {
+  const getText = (state: ESwipeModalState) => {
     switch (state) {
-      case EState.HIDDEN: {
+      case ESwipeModalState.HIDDEN: {
         return "Закрыта";
       }
-      case EState.HALF: {
+      case ESwipeModalState.HALF: {
         return "50/50";
       }
-      case EState.FULL: {
+      case ESwipeModalState.FULL: {
         return "Открыта";
       }
     }
@@ -75,7 +75,15 @@ function App() {
     <>
       <div id="page-header" className="page-header">
         <div className="buttons">
-          <button onClick={() => setState(state === 2 ? 0 : state + 1)}>
+          <button
+            onClick={() =>
+              setState(
+                state === ESwipeModalState.FULL
+                  ? ESwipeModalState.HIDDEN
+                  : state + 1
+              )
+            }
+          >
             Переключить стейт модалки: {getText(state)}
           </button>
           <div className="inline-buttons">
@@ -99,17 +107,15 @@ function App() {
         <div className="b"></div>
       </div>
 
-      <SwipeModal
-        state={state}
-        maxHeight={maxHeight}
-        onStateChange={onStateChange}
-      >
+      <SwipeModalV2 state={state} maxHeight={maxHeight}>
         <div>
-          {range(blocksCount).map((b) => (
-            <div key={b} className="stub"></div>
-          ))}
+          <div>
+            {range(blocksCount).map((b) => (
+              <div key={b} className="stub"></div>
+            ))}
+          </div>
         </div>
-      </SwipeModal>
+      </SwipeModalV2>
     </>
   );
 }

@@ -36,7 +36,7 @@
 
 .stub {
   background-color: #1481ba;
-  height: 400px;
+  height: 200px;
   margin-bottom: 16px;
   -moz-user-select: none; /* firefox */
   -webkit-user-select: none; /* Safari */
