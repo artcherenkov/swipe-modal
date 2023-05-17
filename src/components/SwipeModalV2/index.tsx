@@ -1,6 +1,6 @@
 import React, { MutableRefObject, useEffect, useRef, useState } from "react";
 import { animated, useSpring } from "@react-spring/web";
-import { useGesture } from "@use-gesture/react";
+import { Handler, useGesture } from "@use-gesture/react";
 
 import "./styles.css";
 
@@ -27,6 +27,20 @@ interface IUseAdaptiveMaxHeight {
   adaptiveHeight: boolean;
   ref: MutableRefObject<HTMLDivElement | null>;
 }
+
+/**
+ * Функция для блокировки pull-to-refresh в мобильных браузерах.
+ * @param isLocked нужно ли включить блокировку.
+ */
+const toggleDocumentBodyScroll = (isLocked: boolean) => {
+  if (isLocked) {
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+  } else {
+    document.body.style.overflow = "auto";
+    document.body.style.overscrollBehavior = "auto";
+  }
+};
 
 const useElementHeight = ({
   ref,
@@ -94,6 +108,12 @@ export const SwipeModalV2 = (props: IProps) => {
   const { children, state, maxHeight, onStateChange } = props;
   const adaptiveHeight = true;
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const swipeRef = useRef<HTMLDivElement>(null);
+
+  // для прокидывания текущего drag movementY в событие скролла
+  let currentDragMy = 0;
+  // для прокидывания текущего положения скролла в событие дрэга
+  let currentScroll: undefined | number = undefined;
 
   const [{ y }, api] = useSpring(() => ({ y: 0 }));
 
@@ -109,41 +129,128 @@ export const SwipeModalV2 = (props: IProps) => {
     api.start({ y: -getHeightForState(state, adaptiveMaxHeight) });
   }, [state, adaptiveMaxHeight]);
 
-  const bind = useGesture(
-    {
-      onDrag: ({ movement: [, my], offset: [, oy], cancel, active }) => {
-        let nextState = state;
+  /**
+   * Функция для добавления/удаления CSS-класса, отвечающего за возможность
+   * скролла модалки.
+   */
+  const handleAddingScrollClassname = () => {
+    if (!swipeRef.current) {
+      return;
+    }
 
-        const halfStateHeight = getHeightForState(
-          ESwipeModalState.HALF,
-          adaptiveMaxHeight
-        );
+    if (state === ESwipeModalState.FULL) {
+      swipeRef.current.classList.add("swipe_scroll");
+    } else {
+      swipeRef.current.classList.remove("swipe_scroll");
+    }
+  };
 
-        if (my < -70) {
-          if (oy > halfStateHeight) {
-            nextState = ESwipeModalState.HALF;
-            onStateChange(nextState);
-          } else {
-            nextState = ESwipeModalState.FULL;
-            onStateChange(nextState);
-          }
-          cancel();
-        } else if (my > 70) {
-          if (oy < halfStateHeight) {
-            nextState = ESwipeModalState.HALF;
-            onStateChange(nextState);
-          } else {
-            nextState = ESwipeModalState.HIDDEN;
-            onStateChange(nextState);
-          }
-          cancel();
-        }
+  /**
+   * Функция для закрытия модалки при свайпе. Может вызываться в двух местах:
+   * в обработчике дрэга и скролла. В случае вызова из обработчика скролла
+   * нужно принудительно вызывать gesture API, чтобы свернуть модалку.
+   * @param invokeGestureApi параметр для принудительного вызова gesture API
+   */
+  const closeModalOnSwipe = (invokeGestureApi = false) => {
+    const isFullMode = state === ESwipeModalState.FULL;
+    const isAtTheTop = currentScroll === undefined || currentScroll <= 0;
+    const isSwipeToBottom = currentDragMy > 0;
 
+    console.log(
+      "isFullMode",
+      isFullMode,
+      "isSwipeToBottom",
+      isSwipeToBottom,
+      "isAtTheTop",
+      isAtTheTop
+    );
+
+    if (isFullMode && isSwipeToBottom && isAtTheTop) {
+      const nextState = ESwipeModalState.HALF;
+
+      onStateChange(nextState);
+      swipeRef.current?.classList.remove("swipe_scroll");
+
+      if (invokeGestureApi) {
         api.start({
-          y: active ? oy : -getHeightForState(nextState, adaptiveMaxHeight),
+          y: getHeightForState(nextState, adaptiveMaxHeight),
           immediate: false,
         });
-      },
+      }
+    }
+  };
+
+  const dragFn: Handler<
+    "drag",
+    PointerEvent | MouseEvent | TouchEvent | KeyboardEvent
+  > = ({ movement: [, my], offset: [, oy], cancel, active }) => {
+    let nextState = state;
+    currentDragMy = my;
+
+    const halfStateHeight = getHeightForState(
+      ESwipeModalState.HALF,
+      adaptiveMaxHeight
+    );
+
+    if (my < -70) {
+      if (oy > -halfStateHeight) {
+        nextState = ESwipeModalState.HALF;
+        onStateChange(nextState);
+      } else {
+        nextState = ESwipeModalState.FULL;
+        onStateChange(nextState);
+      }
+      cancel();
+    } else if (my > 70) {
+      if (oy < -halfStateHeight) {
+        nextState = ESwipeModalState.HALF;
+        onStateChange(nextState);
+      } else {
+        nextState = ESwipeModalState.HIDDEN;
+        onStateChange(nextState);
+      }
+      cancel();
+    }
+
+    toggleDocumentBodyScroll(nextState > ESwipeModalState.HIDDEN);
+    closeModalOnSwipe();
+    handleAddingScrollClassname();
+
+    api.start({
+      y: active ? oy : -getHeightForState(nextState, adaptiveMaxHeight),
+      immediate: false,
+    });
+  };
+
+  const scrollFn: Handler<"scroll", UIEvent> = ({ event }) => {
+    const target = event.currentTarget as HTMLElement | null;
+    console.log("wtf");
+
+    if (!target) {
+      return;
+    }
+
+    const scrollTop = target.scrollTop;
+
+    // На андроиде скролл элемента становится undefined, если он остановился в любом месте.
+    // В коде считается, что если скролл = undefined, то модалка не скроллилась вообще.
+    // Если сработал этот обработчик, значит скролл был, поэтому записываем в глобальную переменную
+    // последнее значение скролла
+    currentScroll = scrollTop === undefined ? currentScroll : scrollTop;
+
+    closeModalOnSwipe(true);
+
+    // если скролл где-то внизу, считаем, что жест не активен
+    // нужно, чтобы не закрывать модалку, пока скролл не в верхнем положении
+    if (scrollTop !== 0) {
+      currentDragMy = 0;
+    }
+  };
+
+  const bind = useGesture(
+    {
+      onDrag: dragFn,
+      onScroll: scrollFn,
     },
     {
       drag: {
@@ -151,12 +258,17 @@ export const SwipeModalV2 = (props: IProps) => {
         from: () => [0, y.get()],
         rubberband: true,
       },
+      scroll: {
+        filterTaps: true,
+        from: () => [0, y.get()],
+      },
     }
   );
 
   return (
     <animated.div
       className="swipe"
+      ref={swipeRef}
       {...bind()}
       style={{
         y,
