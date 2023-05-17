@@ -14,6 +14,8 @@ interface IProps {
   children: React.ReactElement;
   state: ESwipeModalState;
   maxHeight: number;
+
+  onStateChange(state: ESwipeModalState): void;
 }
 
 interface IUseHeightForStateProps {
@@ -89,7 +91,7 @@ const useHeightForState = ({ maxHeight }: IUseHeightForStateProps) => {
 };
 
 export const SwipeModalV2 = (props: IProps) => {
-  const { children, state, maxHeight } = props;
+  const { children, state, maxHeight, onStateChange } = props;
   const adaptiveHeight = true;
   const contentRef = useRef<HTMLDivElement | null>(null);
 
@@ -109,14 +111,53 @@ export const SwipeModalV2 = (props: IProps) => {
 
   const bind = useGesture(
     {
-      onDrag: () => {},
+      onDrag: ({ movement: [, my], offset: [, oy], cancel, active }) => {
+        let nextState = state;
+
+        const halfStateHeight = getHeightForState(
+          ESwipeModalState.HALF,
+          adaptiveMaxHeight
+        );
+
+        if (my < -70) {
+          if (oy > halfStateHeight) {
+            nextState = ESwipeModalState.HALF;
+            onStateChange(nextState);
+          } else {
+            nextState = ESwipeModalState.FULL;
+            onStateChange(nextState);
+          }
+          cancel();
+        } else if (my > 70) {
+          if (oy < halfStateHeight) {
+            nextState = ESwipeModalState.HALF;
+            onStateChange(nextState);
+          } else {
+            nextState = ESwipeModalState.HIDDEN;
+            onStateChange(nextState);
+          }
+          cancel();
+        }
+
+        api.start({
+          y: active ? oy : -getHeightForState(nextState, adaptiveMaxHeight),
+          immediate: false,
+        });
+      },
     },
-    { drag: {} }
+    {
+      drag: {
+        filterTaps: true,
+        from: () => [0, y.get()],
+        rubberband: true,
+      },
+    }
   );
 
   return (
     <animated.div
       className="swipe"
+      {...bind()}
       style={{
         y,
         height: getHeightForState(ESwipeModalState.FULL, adaptiveMaxHeight),

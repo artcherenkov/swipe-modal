@@ -107,7 +107,11 @@ function App() {
         <div className="b"></div>
       </div>
 
-      <SwipeModalV2 state={state} maxHeight={maxHeight}>
+      <SwipeModalV2
+        state={state}
+        maxHeight={maxHeight}
+        onStateChange={onStateChange}
+      >
         <div>
           <div>
             {range(blocksCount).map((b) => (
